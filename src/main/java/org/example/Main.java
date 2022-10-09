@@ -3,12 +3,16 @@ package org.example;
 import io.micrometer.core.aop.TimedAspect;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.context.event.EventListener;
 
 import java.util.Arrays;
@@ -28,16 +32,32 @@ public class Main {
     @EventListener(ApplicationReadyEvent.class)
     void init() {
         log.info("hello world, I have just started up");
-
-        Metrics.globalRegistry.counter("objects.instance").increment(1.0);
+        System.out.println("");
 
         var timer = Metrics.globalRegistry.find("log.info").timer();
         System.out.println("Number of log.info(..) calls: " + (timer != null ? timer.count() : null));
 
+        Metrics.globalRegistry.counter("objects.instance").increment(1.0);
         var counter = Metrics.globalRegistry.find("objects.instance").counter();
         System.out.println("Counter: " + (counter != null ? counter.count() : null));
 
+        System.out.println("\nDefined Meters:");
         Metrics.globalRegistry.forEachMeter(m->System.out.println(m.getId().getName()));
+    }
+
+//    @Autowired Logger log;
+//
+//    // Causes "The bean 'logger' could not be injected because it is a JDK dynamic proxy" and "The bean is of type 'jdk.proxy2.$Proxy45' and implements:"
+//    @Bean
+//    @Scope(value = "session", proxyMode = ScopedProxyMode.INTERFACES)
+//    Logger logger() {
+//        return new Logger();
+//    }
+
+    // Set by csb, and causes the `@Timed` metric to be null
+    @Bean
+    public AnnotationAwareAspectJAutoProxyCreator aspectJProxyCreator() {
+        return new AnnotationAwareAspectJAutoProxyCreator();
     }
 
     @Bean
