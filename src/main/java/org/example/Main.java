@@ -16,6 +16,7 @@ import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.context.event.EventListener;
 
 import java.util.Arrays;
+import java.util.List;
 
 @SpringBootApplication
 public class Main {
@@ -23,19 +24,19 @@ public class Main {
         System.out.println("Hello world!");
         SpringApplication.run(Main.class, args);
     }
-    private final Logger log;
-
-    public Main(Logger log) {
-        this.log = log;
-    }
+//    private final Logger log;
+//
+//    public Main(Logger log) {
+//        this.log = log;
+//    }
 
     @EventListener(ApplicationReadyEvent.class)
     void init() {
-        log.info("hello world, I have just started up");
+        logger().info("hello world, I have just started up");
         System.out.println("");
 
         var timer = Metrics.globalRegistry.find("log.info").timer();
-        System.out.println("Number of log.info(..) calls: " + (timer != null ? timer.count() : null));
+        System.out.println("Number of logger().info(..) calls: " + (timer != null ? timer.count() : null));
 
         Metrics.globalRegistry.counter("objects.instance").increment(1.0);
         var counter = Metrics.globalRegistry.find("objects.instance").counter();
@@ -50,14 +51,19 @@ public class Main {
 //    // Causes "The bean 'logger' could not be injected because it is a JDK dynamic proxy" and "The bean is of type 'jdk.proxy2.$Proxy45' and implements:"
 //    @Bean
 //    @Scope(value = "session", proxyMode = ScopedProxyMode.INTERFACES)
-//    Logger logger() {
-//        return new Logger();
-//    }
+    // Define a bean rather than a @Component to work around https://www.baeldung.com/spring-not-eligible-for-auto-proxying
+    @Bean
+    Logger logger() {
+        return new Logger();
+    }
 
     // Set by csb, and causes the `@Timed` metric to be null
     @Bean
     public AnnotationAwareAspectJAutoProxyCreator aspectJProxyCreator() {
-        return new AnnotationAwareAspectJAutoProxyCreator();
+        var a = new AnnotationAwareAspectJAutoProxyCreator();
+        // Fixes the problem
+        // a.setProxyTargetClass(true);
+        return a;
     }
 
     @Bean
@@ -80,12 +86,12 @@ public class Main {
     CommandLineRunner commandLineRunner(ApplicationContext ctx) {
         return args -> {
 
-            log.info("Let's inspect the beans provided by Spring Boot:");
+            logger().info("Let's inspect the beans provided by Spring Boot:");
 
             String[] beanNames = ctx.getBeanDefinitionNames();
             Arrays.sort(beanNames);
             for (String beanName : beanNames) {
-                log.info(beanName);
+                logger().info(beanName);
             }
 
         };
